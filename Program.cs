@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Spectre.Console.Cli;
 
 InitializeMSBuilePath();
 var app = new CommandApp<SolutionParserCommand>();

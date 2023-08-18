@@ -1,7 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Build.Construction;
-using Spectre.Console.Cli;
+
+namespace Commands;
 public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settings>
 {
     public sealed class Settings : CommandSettings
@@ -20,9 +21,21 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         }
 
         var sln = SolutionFile.Parse(settings.Solution);
-        sln.ProjectsInOrder.Where(prj => prj.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
-            .Select(prj => new { Name = prj.ProjectName, Path = prj.AbsolutePath })
-            .ToList().ForEach(Console.WriteLine);
+
+        var solution = new Solution
+        {
+            Name = Path.GetFileNameWithoutExtension(settings.Solution),
+            Path = settings.Solution
+        };
+
+
+        var projs = sln.ProjectsInOrder.Where(prj => prj.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
+            .Select(prj => new Project { Name = prj.ProjectName, Path = prj.AbsolutePath })
+            .ToList();
+
+        solution.Projects = projs;
+
+        Console.WriteLine(solution);
 
         return 0;
     }
