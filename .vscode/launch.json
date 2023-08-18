@@ -10,7 +10,9 @@
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/bin/Debug/net7.0/SolutionParser.dll",
-            "args": [],
+            "args": [
+                "/Users/prashantvc/repos/MyAppX/MyAppX.sln"
+            ],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "stopAtEntry": false

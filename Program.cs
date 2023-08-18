@@ -1,19 +1,38 @@
-﻿using Spectre.Console.Cli;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
+using Spectre.Console.Cli;
 
+InitializeMSBuilePath();
 var app = new CommandApp<SolutionParserCommand>();
 return await app.RunAsync(args);
 
-internal sealed class SolutionParserCommand : Command<SolutionParserCommand.Settings>
-{
-    public sealed class Settings : CommandSettings
-    {
-        [CommandArgument(0, "<SOLUTION>")]
-        public string Solution { get; set; }
-    }
 
-    public override int Execute(CommandContext context, Settings settings)
+static void InitializeMSBuilePath()
+{
+    try
     {
-        // Do something with the settings
-        return 0;
+        ProcessStartInfo startInfo = new("dotnet", "--list-sdks")
+        {
+            RedirectStandardOutput = true
+        };
+
+        var process = Process.Start(startInfo);
+        if (process == null)
+            throw new InvalidOperationException("Could not start dotnet process.");
+
+        process.WaitForExit(1000);
+
+        var output = process.StandardOutput.ReadToEnd();
+        var sdkPaths = Regex.Matches(output, "([0-9]+.[0-9]+.[0-9]+) \\[(.*)\\]")
+            .OfType<Match>()
+            .Select(m => Path.Combine(m.Groups[2].Value, m.Groups[1].Value, "MSBuild.dll"));
+
+        var sdkPath = sdkPaths.Last();
+        Environment.SetEnvironmentVariable("MSBUILD_EXE_PATH", sdkPath);
+    }
+    catch (Exception exception)
+    {
+        Console.WriteLine("Could not set MSBUILD_EXE_PATH: " + exception);
+        throw;
     }
 }
