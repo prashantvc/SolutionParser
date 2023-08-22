@@ -29,13 +29,11 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         var projs = sln.ProjectsInOrder.Where(prj => prj.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
             .ToList();
 
-        projs.ForEach(Console.WriteLine);
 
         var projects = new ConcurrentBag<Project>();
         Parallel.ForEach(projs, proj =>
         {
             var p = GetProjectDetails(proj.ProjectName, proj.AbsolutePath);
-            Console.WriteLine(p);
             projects.Add(p);
         });
 
@@ -63,10 +61,13 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         var jsonStr = JsonSerializer.Serialize(json, new JsonSerializerOptions
         {
             WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
 
         string jsonFilePath = Path.Combine(Path.GetTempPath(), $"{Path.GetFileName(settings.Solution)}.json");
         File.WriteAllTextAsync(jsonFilePath, jsonStr);
+
+        Console.WriteLine($"{jsonFilePath}");
 
         return 0;
     }
