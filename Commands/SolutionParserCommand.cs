@@ -67,7 +67,7 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         string jsonFilePath = Path.Combine(Path.GetTempPath(), $"{Path.GetFileName(settings.Solution)}.json");
         File.WriteAllTextAsync(jsonFilePath, jsonStr);
 
-        Console.WriteLine($"{jsonFilePath}");
+        Console.WriteLine(jsonStr);
 
         return 0;
     }
