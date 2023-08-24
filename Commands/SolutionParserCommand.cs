@@ -33,8 +33,9 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         var projects = new ConcurrentBag<Project>();
         Parallel.ForEach(projs, proj =>
         {
-            var p = GetProjectDetails(proj.ProjectName, proj.AbsolutePath);
-            projects.Add(p);
+            var projectDetails = GetProjectDetails(proj.ProjectName, proj.AbsolutePath);
+            if (projectDetails != null)
+                projects.Add(projectDetails);
         });
 
         var allProjects = projects.ToList();
@@ -72,36 +73,44 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         return 0;
     }
 
-    Project GetProjectDetails(string name, string projPath)
+    Project? GetProjectDetails(string name, string projPath)
     {
-        var proj = MSProject.FromFile(projPath, new ProjectOptions());
-
-        var assembly = proj.GetPropertyValue("TargetPath");
-        var outputType = proj.GetPropertyValue("outputType");
-        var desingerHostPath = proj.GetPropertyValue("AvaloniaPreviewerNetCoreToolPath");
-
-        var targetfx = proj.GetPropertyValue("TargetFramework");
-        var projectDepsFilePath = proj.GetPropertyValue("ProjectDepsFilePath");
-        var projectRuntimeConfigFilePath = proj.GetPropertyValue("ProjectRuntimeConfigFilePath");
-
-        var references = proj.GetItems("ProjectReference");
-        var referencesPath = references.Select(p => Path.GetFullPath(p.EvaluatedInclude, projPath)).ToArray();
-
-        return new Project
+        try
         {
-            Name = name,
-            Path = projPath,
-            TargetPath = assembly,
-            OutputType = outputType,
-            DesignerHostPath = Path.GetFullPath(desingerHostPath),
-
-            TargetFramework = targetfx,
-            DepsFilePath = projectDepsFilePath,
-            RuntimeConfigFilePath = projectRuntimeConfigFilePath,
-
-            CoreProject = proj,
-            ProjectReferences = referencesPath
-
-        };
+            var proj = MSProject.FromFile(projPath, new ProjectOptions());
+    
+            var assembly = proj.GetPropertyValue("TargetPath");
+            var outputType = proj.GetPropertyValue("outputType");
+            var desingerHostPath = proj.GetPropertyValue("AvaloniaPreviewerNetCoreToolPath");
+    
+            var targetfx = proj.GetPropertyValue("TargetFramework");
+            var projectDepsFilePath = proj.GetPropertyValue("ProjectDepsFilePath");
+            var projectRuntimeConfigFilePath = proj.GetPropertyValue("ProjectRuntimeConfigFilePath");
+    
+            var references = proj.GetItems("ProjectReference");
+            var referencesPath = references.Select(p => Path.GetFullPath(p.EvaluatedInclude, projPath)).ToArray();
+            desingerHostPath = string.IsNullOrEmpty(desingerHostPath) ? "" : Path.GetFullPath(desingerHostPath);
+    
+            return new Project
+            {
+                Name = name,
+                Path = projPath,
+                TargetPath = assembly,
+                OutputType = outputType,
+                DesignerHostPath = desingerHostPath,
+    
+                TargetFramework = targetfx,
+                DepsFilePath = projectDepsFilePath,
+                RuntimeConfigFilePath = projectRuntimeConfigFilePath,
+    
+                CoreProject = proj,
+                ProjectReferences = referencesPath
+    
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

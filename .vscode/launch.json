@@ -11,7 +11,7 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/bin/Debug/net7.0/SolutionParser.dll",
             "args": [
-                "/Users/prashantvc/repos/MyAppX/MyAppX.sln"
+                "/home/parallels/repos/HelloApp/HelloApp.sln"
             ],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
