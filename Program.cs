@@ -22,7 +22,8 @@ static void InitializeMSBuilePath()
         process.WaitForExit(1000);
 
         var output = process.StandardOutput.ReadToEnd();
-        var sdkPaths = Regex.Matches(output, "([0-9]+.[0-9]+.[0-9]+) \\[(.*)\\]")
+        string pattern = @"(\d+\.\d+\.\d+[-\w\.]*)\s+\[(.*)\]";
+        var sdkPaths = Regex.Matches(output, pattern)
             .OfType<Match>()
             .Select(m => Path.Combine(m.Groups[2].Value, m.Groups[1].Value, "MSBuild.dll"));
 
