@@ -16,24 +16,36 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         public required string Solution { get; init; }
     }
 
+    record ProjectRecord(string Name, string Path);
+
     public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
     {
-        if (!File.Exists(settings.Solution))
+        string solutionPath = Path.GetFullPath(settings.Solution);
+        IEnumerable<ProjectRecord>? projFiles = null;
+
+        if (!solutionPath.EndsWith(".sln") && Directory.Exists(solutionPath))
         {
-            Console.WriteLine("Solution file does not exist.");
-            return -1;
+            projFiles = Directory.GetFiles(solutionPath, "*.csproj")
+                .Select(p => new ProjectRecord(Path.GetFileNameWithoutExtension(p), p));
         }
 
-        var sln = SolutionFile.Parse(settings.Solution);
+        if (File.Exists(settings.Solution) && projFiles is null)
+        {
+            var sln = SolutionFile.Parse(settings.Solution);
+            projFiles = sln.ProjectsInOrder.Where(prj => prj.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
+               .Select(prj => new ProjectRecord(prj.ProjectName, prj.AbsolutePath));
+        }
 
-        var projs = sln.ProjectsInOrder.Where(prj => prj.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
-            .ToList();
-
+        if (projFiles is null)
+        {
+            Console.WriteLine("Invalid solution path");
+            return 1;
+        }
 
         var projects = new ConcurrentBag<Project>();
-        Parallel.ForEach(projs, proj =>
+        Parallel.ForEach(projFiles, proj =>
         {
-            var projectDetails = GetProjectDetails(proj.ProjectName, proj.AbsolutePath);
+            var projectDetails = GetProjectDetails(proj.Name, proj.Path);
             if (projectDetails != null)
                 projects.Add(projectDetails);
         });
@@ -66,7 +78,7 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         });
 
         string jsonFilePath = Path.Combine(Path.GetTempPath(), $"{Path.GetFileName(settings.Solution)}.json");
-        File.WriteAllTextAsync(jsonFilePath, jsonStr);
+        File.WriteAllText(jsonFilePath, jsonStr);
 
         Console.WriteLine(jsonStr);
 
@@ -78,19 +90,19 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         try
         {
             var proj = MSProject.FromFile(projPath, new ProjectOptions());
-    
+
             var assembly = proj.GetPropertyValue("TargetPath");
             var outputType = proj.GetPropertyValue("outputType");
             var desingerHostPath = proj.GetPropertyValue("AvaloniaPreviewerNetCoreToolPath");
-    
+
             var targetfx = proj.GetPropertyValue("TargetFramework");
             var projectDepsFilePath = proj.GetPropertyValue("ProjectDepsFilePath");
             var projectRuntimeConfigFilePath = proj.GetPropertyValue("ProjectRuntimeConfigFilePath");
-    
+
             var references = proj.GetItems("ProjectReference");
             var referencesPath = references.Select(p => Path.GetFullPath(p.EvaluatedInclude, projPath)).ToArray();
             desingerHostPath = string.IsNullOrEmpty(desingerHostPath) ? "" : Path.GetFullPath(desingerHostPath);
-    
+
             return new Project
             {
                 Name = name,
@@ -98,14 +110,14 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
                 TargetPath = assembly,
                 OutputType = outputType,
                 DesignerHostPath = desingerHostPath,
-    
+
                 TargetFramework = targetfx,
                 DepsFilePath = projectDepsFilePath,
                 RuntimeConfigFilePath = projectRuntimeConfigFilePath,
-    
+
                 CoreProject = proj,
                 ProjectReferences = referencesPath
-    
+
             };
         }
         catch
