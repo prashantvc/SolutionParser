@@ -5,6 +5,9 @@ using System.Collections.Concurrent;
 using Microsoft.Build.Definition;
 using MSProject = Microsoft.Build.Evaluation.Project;
 using System.Text.Json;
+using System.Drawing;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Commands;
 public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settings>
@@ -14,12 +17,18 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         [Description("The solution file (.sln) path.")]
         [CommandArgument(0, "<SOLUTION>")]
         public required string Solution { get; init; }
+
+        [Description("The .NET SDK version.")]
+        [CommandOption("-s|--sdk <SDK>")]
+        public required string Sdk { get; init; } = "7.0";
     }
 
     record ProjectRecord(string Name, string Path);
 
     public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
     {
+        InitializeMSBuilePath(settings.Sdk);
+
         string solutionPath = Path.GetFullPath(settings.Solution);
         IEnumerable<ProjectRecord>? projFiles = null;
 
@@ -120,9 +129,43 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
 
             };
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error parsing project {name}: {ex.Message}");
             return null;
+        }
+    }
+
+    static void InitializeMSBuilePath(string sdk)
+    {
+        try
+        {
+            ProcessStartInfo startInfo = new("dotnet", "--list-sdks")
+            {
+                RedirectStandardOutput = true
+            };
+
+            var process = Process.Start(startInfo);
+            if (process == null)
+                throw new InvalidOperationException("Could not start dotnet process.");
+
+            process.WaitForExit(1000);
+
+            var output = process.StandardOutput.ReadToEnd();
+            string pattern = @"(\d+\.\d+\.\d+[-\w\.]*)\s+\[(.*)\]";
+            var sdkPaths = Regex.Matches(output, pattern)
+                .OfType<Match>()
+                .Select(m => new { Version = m.Groups[1].Value, Path = Path.Combine(m.Groups[2].Value, m.Groups[1].Value, "MSBuild.dll") });
+
+            var sdkPath = sdkPaths.Where(p => p.Version.StartsWith(sdk)).FirstOrDefault()
+                ?? throw new InvalidOperationException($"Could not find .NET SDK {sdk}");
+
+            Environment.SetEnvironmentVariable("MSBUILD_EXE_PATH", sdkPath.Path);
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine("Could not set MSBUILD_EXE_PATH: " + exception);
+            throw;
         }
     }
 }
