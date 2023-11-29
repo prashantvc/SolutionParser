@@ -19,6 +19,9 @@ internal class Project
     public MSProject? CoreProject { get; set; } = null;
 
     public string? DirectoryPath => System.IO.Path.GetDirectoryName(Path);
+
+    public string? IntermediateOutputPath { get; internal set; }
+
     public override string ToString() => $"{Name} ({OutputType}) - {DesignerHostPath}";
 }
 

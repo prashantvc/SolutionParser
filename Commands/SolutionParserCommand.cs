@@ -112,6 +112,8 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
             var referencesPath = references.Select(p => Path.GetFullPath(p.EvaluatedInclude, projPath)).ToArray();
             desingerHostPath = string.IsNullOrEmpty(desingerHostPath) ? "" : Path.GetFullPath(desingerHostPath);
 
+            var intermediateOutputPath = GetIntermediateOutputPath(proj);
+
             return new Project
             {
                 Name = name,
@@ -125,7 +127,8 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
                 RuntimeConfigFilePath = projectRuntimeConfigFilePath,
 
                 CoreProject = proj,
-                ProjectReferences = referencesPath
+                ProjectReferences = referencesPath,
+                IntermediateOutputPath = intermediateOutputPath
 
             };
         }
@@ -134,6 +137,19 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
             Console.WriteLine($"Error parsing project {name}: {ex.Message}");
             return null;
         }
+    }
+
+    static string GetIntermediateOutputPath(MSProject proj)
+    {
+        var intermediateOutputPath = proj.GetPropertyValue("IntermediateOutputPath");
+        var iop = Path.Combine(intermediateOutputPath, "Avalonia", "references");
+
+        if (!Path.IsPathRooted(intermediateOutputPath))
+        {
+            iop = Path.Combine(proj.DirectoryPath ?? "", iop).Replace("\\", "/");
+        }
+
+        return iop;
     }
 
     static void InitializeMSBuilePath(string sdk)
