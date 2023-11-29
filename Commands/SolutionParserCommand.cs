@@ -146,7 +146,9 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
 
         if (!Path.IsPathRooted(intermediateOutputPath))
         {
-            iop = Path.Combine(proj.DirectoryPath ?? "", iop).Replace("\\", "/");
+            iop = Path.Combine(proj.DirectoryPath ?? "", iop);
+            if (Path.DirectorySeparatorChar == '/')
+                iop = iop.Replace("\\", "/");
         }
 
         return iop;
