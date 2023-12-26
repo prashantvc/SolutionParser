@@ -20,7 +20,7 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
 
         [Description("The .NET SDK version.")]
         [CommandOption("-s|--sdk <SDK>")]
-        public required string Sdk { get; init; } = "7.0";
+        public required string Sdk { get; init; }
     }
 
     record ProjectRecord(string Name, string Path);
@@ -175,8 +175,9 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
                 .OfType<Match>()
                 .Select(m => new { Version = m.Groups[1].Value, Path = Path.Combine(m.Groups[2].Value, m.Groups[1].Value, "MSBuild.dll") });
 
-            var sdkPath = sdkPaths.Where(p => p.Version.StartsWith(sdk)).FirstOrDefault()
-                ?? throw new InvalidOperationException($"Could not find .NET SDK {sdk}");
+            var sdkPath = (sdk == null ? sdkPaths.LastOrDefault() :
+                 sdkPaths.Where(p => p.Version.StartsWith(sdk)).FirstOrDefault())
+                 ?? throw new InvalidOperationException($"Could not find .NET SDK version {sdk}");
 
             Environment.SetEnvironmentVariable("MSBUILD_EXE_PATH", sdkPath.Path);
         }
