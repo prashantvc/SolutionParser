@@ -34,7 +34,9 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
 
         if (!solutionPath.EndsWith(".sln") && Directory.Exists(solutionPath))
         {
-            projFiles = Directory.GetFiles(solutionPath, "*.csproj")
+            string[] projFileGlobs = ["*.csproj", "*.fsproj"];
+            projFiles = projFileGlobs
+                .SelectMany(glob => Directory.GetFiles(solutionPath, glob))
                 .Select(p => new ProjectRecord(Path.GetFileNameWithoutExtension(p), p));
         }
 
