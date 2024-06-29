@@ -21,13 +21,17 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         [Description("The .NET SDK version.")]
         [CommandOption("-s|--sdk <SDK>")]
         public required string Sdk { get; init; }
+
+        [Description("Include prerelease sdk versions.")]
+        [CommandOption("-p|--prerelease")]
+        public required bool Prerelease { get; init; }
     }
 
     record ProjectRecord(string Name, string Path);
 
     public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
     {
-        InitializeMSBuilePath(settings.Sdk);
+        InitializeMSBuilePath(settings.Sdk, settings.Prerelease);
 
         string solutionPath = Path.GetFullPath(settings.Solution);
         IEnumerable<ProjectRecord>? projFiles = null;
@@ -156,7 +160,7 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
         return iop;
     }
 
-    static void InitializeMSBuilePath(string sdk)
+    static void InitializeMSBuilePath(string sdk, bool prerelease)
     {
         try
         {
@@ -175,6 +179,7 @@ public sealed class SolutionParserCommand : Command<SolutionParserCommand.Settin
             string pattern = @"(\d+\.\d+\.\d+[-\w\.]*)\s+\[(.*)\]";
             var sdkPaths = Regex.Matches(output, pattern)
                 .OfType<Match>()
+                .Where(m => prerelease ? true : (m.Value.IndexOf('-') >= 0 ? false : true))
                 .Select(m => new { Version = m.Groups[1].Value, Path = Path.Combine(m.Groups[2].Value, m.Groups[1].Value, "MSBuild.dll") });
 
             var sdkPath = (sdk == null ? sdkPaths.LastOrDefault() :
